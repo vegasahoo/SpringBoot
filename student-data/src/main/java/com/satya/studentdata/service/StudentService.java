@@ -2,13 +2,15 @@ package com.satya.studentdata.service;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.CachePut;
-import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.satya.studentdata.dao.StudentDAO;
 import com.satya.studentdata.model.Student;
 
@@ -16,11 +18,16 @@ import com.satya.studentdata.model.Student;
 
 
 @Service
+@EnableCaching
 public class StudentService {
+	
+	Logger LOGGER =  LoggerFactory.getLogger(StudentService.class);
 	
 	@Autowired
 	private StudentDAO sd;
 	
+	@Autowired
+	private StringRedisTemplate template;
 	
 	public List<Student> getAllStudent(){
 		List<Student> studentList = sd.findAll();
@@ -31,28 +38,68 @@ public class StudentService {
 		return null;
 	}
 	
-	@Transactional
-	@Cacheable(value = "student", key = "#id")
-	public Student getStudentById(int id) {
-		return sd.findById(id);	
+	public Student getStudentById(int id){
+		
+		String s = template.opsForValue().get(String.valueOf(id));
+		if(s!= null) { 
+			LOGGER.info("Data fetched from Redis cache");
+			try {
+				Student student = new ObjectMapper().readValue(s,Student.class);
+				return student;
+			} catch (JsonProcessingException e) {
+				e.printStackTrace();
+			} 
+		}
+		
+		Student student = sd.findById(id); 
+		LOGGER.info("Data fetched from DB");
+		
+		
+		try {
+			String stringObject = new ObjectMapper().writeValueAsString(student);
+			template.opsForValue().set(String.valueOf(id), stringObject);
+		    LOGGER.info("Data updated in Redis Cache");
+		} catch (JsonProcessingException e) {
+			LOGGER.error("Json Processing error occured");
+			e.printStackTrace();
+		}
+		
+		return student;	
 	}
 	
-	
-	@Transactional
-	@CachePut(value = "student", key = "#student.id")
-	public boolean createStudent(Student s) {
-		return (sd.save(s)!= null);
+	public boolean createStudent(Student student) {
+		student = sd.save(student);
+		LOGGER.info("Studetn data created and updated to DB");
+		if(student!= null) {
+			try {
+				String stringObject = new ObjectMapper().writeValueAsString(student);
+				template.opsForValue().set(String.valueOf(student.getId()), stringObject);
+			    LOGGER.info("Data updated in Redis Cache");
+			    return true;
+			} catch (JsonProcessingException e) {
+				LOGGER.error("Json Processing error occured");
+				e.printStackTrace();
+			}
+		}
+		return (sd.save(student)!= null);
 		
 	}
 	
-	@Transactional
-	@CacheEvict(value = "student", key = "#student.id")
 	public boolean deleteStudent(int id) {
-		Student s = sd.findById(id);
-		if(s!=null) {
-			sd.delete(s);
-			return true;
+		Student student = sd.findById(id);
+		if(student!=null) {
+			sd.delete(student);
+			LOGGER.info("Student data deleted from DB");
+			String s = template.opsForValue().get(String.valueOf(id));
+			if(s!= null) {
+				template.delete(String.valueOf(id));
+				LOGGER.info("Data deleted from Redis Cache");
+				return true;
+			}
+			LOGGER.info("Data not present in Redis Cache");
 		}
+		LOGGER.info("Student data not present");
 		return false;
 	}
+
 }
