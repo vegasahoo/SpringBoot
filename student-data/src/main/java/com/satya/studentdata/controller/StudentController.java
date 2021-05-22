@@ -2,6 +2,8 @@ package com.satya.studentdata.controller;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +22,7 @@ public class StudentController {
 	@Autowired
 	private StudentService ss;
 	
+	private Logger LOGGER = LoggerFactory.getLogger(StudentController.class);
 	
 	@GetMapping("/find-all-student")
 	public List<Student> getAllStudent(){
@@ -34,7 +37,7 @@ public class StudentController {
 			return s; 
 		}
 		else {
-			System.out.println("Student Data not present");
+			LOGGER.info("Student Data not present");
 			return null;
 		}
 	}
@@ -50,12 +53,10 @@ public class StudentController {
 	@DeleteMapping("/delete-student/{id}")
 	public String deleteStudent(@PathVariable("id") int id) {
 		if(ss.deleteStudent(id)) {
-			return "Student Data seleted";
+			return "Student Data deleted";
 		}
 		return "Student data no available";
 		
 	}
 	
-	
-
 }
