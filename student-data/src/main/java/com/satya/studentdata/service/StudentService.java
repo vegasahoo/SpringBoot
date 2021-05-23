@@ -42,7 +42,7 @@ public class StudentService {
 		
 		String s = template.opsForValue().get(String.valueOf(id));
 		if(s!= null) { 
-			LOGGER.info("Data fetched from Redis cache");
+			LOGGER.info("Data fetched from Redis Cache");
 			try {
 				Student student = new ObjectMapper().readValue(s,Student.class);
 				return student;
@@ -52,16 +52,18 @@ public class StudentService {
 		}
 		
 		Student student = sd.findById(id); 
-		LOGGER.info("Data fetched from DB");
 		
 		
-		try {
-			String stringObject = new ObjectMapper().writeValueAsString(student);
-			template.opsForValue().set(String.valueOf(id), stringObject);
-		    LOGGER.info("Data updated in Redis Cache");
-		} catch (JsonProcessingException e) {
-			LOGGER.error("Json Processing error occured");
-			e.printStackTrace();
+		if(student!= null) {
+			LOGGER.info("Data fetched from DB");
+			try {
+				String stringObject = new ObjectMapper().writeValueAsString(student);
+				template.opsForValue().set(String.valueOf(id), stringObject);
+			    LOGGER.info("Data updated in Redis Cache");
+			} catch (JsonProcessingException e) {
+				LOGGER.error("Json Processing error occured");
+				e.printStackTrace();
+			}
 		}
 		
 		return student;	
