@@ -32,9 +32,9 @@ public class StudentController {
 	@GetMapping("/find-student-by-id/{id}")
 	public Student getStudentById(@PathVariable("id") int id) {
 		
-		Student s = ss.getStudentById(id); 
-		if(s != null) {
-			return s; 
+		Student student = ss.getStudentById(id); 
+		if(student != null) {
+			return student; 
 		}
 		else {
 			LOGGER.info("Student Data not present");
