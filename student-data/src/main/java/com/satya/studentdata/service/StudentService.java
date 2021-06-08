@@ -70,9 +70,9 @@ public class StudentService {
 	}
 	
 	public boolean createStudent(Student student) {
-		student = sd.save(student);
-		LOGGER.info("Studetn data created and updated to DB");
-		if(student!= null) {
+		if(student!=null) {
+			student = sd.save(student);
+			LOGGER.info("Studetn data created and updated to DB");
 			try {
 				String stringObject = new ObjectMapper().writeValueAsString(student);
 				template.opsForValue().set(String.valueOf(student.getId()), stringObject);
